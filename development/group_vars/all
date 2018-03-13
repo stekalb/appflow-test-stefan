@@ -1,0 +1,251 @@
+---
+
+# file: ~/.appflow/tenant/example/development/group_vars/all
+
+conf_env: development
+
+#
+# Cloud
+#
+conf_cloud_enable: false
+
+#
+# HOSTS
+#
+conf_hosts:
+  - 192.168.80.2 atlantis
+  - 192.168.90.2 testing
+
+conf_hosts_glusterfs:
+    - 192.168.80.2 gluster-node0.local
+    - 192.168.90.2 gluster-node01.local
+
+conf_hosts_mysql:
+    - 192.168.80.2 mysql-node0.local
+    - 192.168.90.2 mysql-node01.local
+
+#
+# rc.local
+#
+conf_rc_local_enable: false
+conf_rc_local_commands:
+  - |
+      # Required for Jailkit
+      # mount -a &
+
+#
+# Firewall
+#
+conf_firewall_enable: false
+conf_firewall_allowed_tcp_ports:
+  - "22"
+  - "80"
+  - "443"
+  # - "10000"
+  # - "9000"
+conf_firewall_allowed_udp_ports: []
+conf_firewall_forwarded_tcp_ports: []
+conf_firewall_forwarded_udp_ports: []
+conf_firewall_additional_rules: []
+# conf_firewall_additional_rules:
+    # - "iptables -A INPUT -p tcp --dport 8080 -s 172.17.0.0/24 -j ACCEPT"
+    # - "iptables -A INPUT -p tcp -s 172.17.0.0/24 -j ACCEPT"
+conf_firewall_ip6_additional_rules: []
+conf_firewall_log_dropped_packets: true
+conf_firewall_disable_firewalld: false
+conf_firewall_disable_ufw: false
+
+#
+# Jailkit
+#
+conf_jails:
+
+  placeholder:
+    state: disable
+
+#
+# nullmailer
+#
+conf_nullmailer_enable: false
+conf_nullmailer_adminaddr:
+conf_nullmailer_defaultdomain:
+conf_nullmailer_remotes:
+
+#
+# http_proxy
+#
+conf_http_proxy: ""
+conf_https_proxy: ""
+
+#
+# etckeeper
+#
+conf_etckeeper_highlevel_package_manager: apt
+conf_etckeeper_lowlevel_package_manager: dpkg
+conf_etckeeper_webhook_url:
+conf_etckeeper_channel:
+conf_etckeeper_username: etckeeper
+conf_etckeeper_icon_emoji: ":twisted_rightwards_arrows:"
+conf_etckeeper_repo_nice_name: etckeeper
+
+#
+# Docker
+#
+conf_docker_enable: false
+
+#
+# HAProxy
+#
+conf_lbtier_stats_auth: "admin:admin"
+
+conf_haproxy_www_default_backend: www-backend
+
+conf_haproxy_www_request: |
+    reqadd X-Forwarded-Proto:\ https if { ssl_fc }
+    rspadd Strict-Transport-Security:\ max-age=31536000;\ includeSubDomains if { ssl_fc }
+    rspadd Strict-Transport-Security:\ max-age=31536000 if { ssl_fc }
+    rsprep ^Set-Cookie:\ (.*) Set-Cookie:\ \1;\ Secure if { ssl_fc }
+
+conf_haproxy_www_redirect: |
+    # redirect scheme https code 301 if { hdr(Host) -i www.test.example.ch } !{ ssl_fc }
+    # redirect scheme https code 301 if !{ ssl_fc }
+
+conf_haproxy_www_acl:
+conf_haproxy_disable_ssl: true
+conf_haproxy_www_backend_balance: leastconn
+conf_haproxy_www_backend: |
+    server localhost 127.0.0.1:6081 cookie control01 check port 6081 inter 12000 rise 3 fall 3
+    #server localhost 127.0.0.1:8080 cookie control01 check port 8080 inter 12000 rise 3 fall 3
+
+# conf_haproxy_pxc_backend_balance: roundrobin
+# conf_haproxy_pxc_backend: |
+#     server localhost 127.0.0.1:3306 check port 9200 inter 12000 rise 3 fall 3
+
+conf_haproxy_acl_files:
+  placeholder:
+    state: absent
+    content:
+
+#
+# VPN
+#
+conf_vpn_nodes:
+  placeholder: placeholder
+
+#
+# GlusterFS
+#
+conf_glusterfs_enable: false
+conf_glusterfs_master:
+conf_glusterfs_failover:
+
+#
+# SSH
+#
+# conf_ssh_allow_users: vagrant appflow syseng deploy nagios autossh backup eim malik luca-linux
+
+#
+# fail2ban
+#
+conf_fail2ban_enable: false
+
+#
+# rbenv
+#
+rbenv:
+  env: user
+  version: v1.1.1
+  default_ruby: 2.4.2
+  rubies:
+    - version: 2.4.2
+#   #  - version: 2.0.0-p353
+#   #  - version: 2.2.4
+#   #    env:
+#   #      RUBY_CONFIGURE_OPTS: "--enable-shared"
+#   #  - version: 2.3.4
+#   #    env:
+#   #      RUBY_CONFIGURE_OPTS: "--enable-shared --with-jemalloc"
+#     # rbenv_extra_depends:
+#     #  - libjemalloc1
+#     #  - libjemalloc-dev
+
+# rbenv_users: [ "deploy" ]
+
+###############
+# SHELL USERS #
+###############
+conf_users:
+
+  REPLACE_USER_NAME:
+    state: enabled
+    groups: "{{ conf_sudo_nopasswd_group }},{{ conf_www_group }}"
+    name: "Basic User"
+    home: "/home/REPLACE_USER_NAME"
+    shell: "{{ conf_zsh_path }}"
+    public_key: |
+      REPLACE_SSH_KEY
+    private_key:
+    is_deployer: yes
+    is_mysql_admin: yes
+
+  deploy:
+    state: enabled
+    groups: "{{ conf_www_group }}"
+    name: "Capistrano Deploy User"
+    home: "/home/deploy"
+    shell: "{{ conf_zsh_path }}"
+    public_key: |
+       REPLACE_SSH_KEY
+    private_key: |
+    is_deployer: no
+    is_mysql_admin: yes
+#################
+# VIRTUAL HOSTS #
+#################
+conf_vhosts_common:
+
+  example:
+    state: enabled
+    servername: dev.example.com
+    serveralias:
+      - www.dev.example.com
+    serveradmin: webmaster@ttss.ch
+    db_name: example_wp
+    db_user: example_wp
+    db_password: We9Diel2
+    db_server: 127.0.0.1
+    db_host: '%'
+    db_prefix: ahCh7Fei
+    glusterfs_uploads: example
+    type: wp_bedrock
+    config_env: true
+    env_opt: |
+      CFG_URL_DEVELOPMENT='https://dev.example.com'
+      CFG_URL_STAGING='https://stage.example.com'
+      CFG_URL_PRODUCTION='https://example.com'
+      WPMDB_LICENCE='XXXXXXXXXXXXXXXXXXXXXXXXXXX'
+    wp_salt: |
+      AUTH_KEY=']+-v`hHqK.M |QO.1|sYEqM5v:^^[3-,]:s?Bbtus9@y+nEbE7+ladg.E|H+<EC|'
+      SECURE_AUTH_KEY='94ZoJdn,s:Jy)p-.pH-A3`GtK$BrwZTL6lA-520F=/l90*,i]t-zI|0QZn)Cq#1|'
+      LOGGED_IN_KEY='$Jd>Gv{:5}^r|!=.F8*Psg{j_B27TVC{n-R<@9GqF[d`@$WhGd+tf?OiPyN8kcb8'
+      NONCE_KEY='46^*wL<)IzG01Y/m_e,|Hb/B-!5:mc#.w{6~@ipSSJc*|67>d[|HJ&OY*|DXjV83'
+      AUTH_SALT='!;oV$#%N3WcL*VsW3IkhI0}FtO/fJ`*H}n18.3.2bT5sW/svc-1nKnp~PONKT<B$'
+      SECURE_AUTH_SALT='iqyy{?<h`fNX/iQ}on>cmB|/bbRD*nZD;8fGDH5`an_-Qj|:h|yO|two>a-yZ;*x'
+      LOGGED_IN_SALT='l82hxF[w)R)L|bqw:a@;x=+geLouagDu:)}ss1k=T:!#.fc:9ZU{hJPEmV`7<BRi'
+      NONCE_SALT='R{~-C+p|eJ=mEF,5F$m-|8@<HocSO!e&GNPw{_GTjW]c@to@8[O3RJA7:G-gMu!F'
+    htaccess:
+    htpasswd_password: false
+    ssl_pemfile:
+    ssl_haproxy: false
+    ssl_pem:
+    bkup: false
+    bkup_www_hosts:
+    bkup_mysql_hosts:
+    bkup_cron_schedule:
+
+#
+# Icinga
+#
+conf_icinga_hosts:
+  placeholder:
+    state: disabled
